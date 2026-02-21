@@ -1,0 +1,159 @@
+Recommended Enterprise Branching Strategy
+main        → PROD
+release/*   → UAT
+develop     → QA
+feature/*   → DEV
+Environment Mapping
+Environment	Git Branch	Purpose
+DEV	feature/*	Developer testing
+QA	develop	Integration testing
+UAT	release/*	Business testing
+PROD	main	Production deployment
+Branch Flow Diagram
+feature/devsecops-ui
+        ↓
+      develop
+        ↓
+release/v1.0
+        ↓
+       main
+Step-by-Step: Create Branches in GitHub
+Step 1 — Clone repository
+git clone https://github.com/your-org/lms-app.git
+cd lms-app
+Step 2 — Create develop branch (QA environment)
+git checkout -b develop
+git push origin develop
+
+This branch deploys to QA.
+
+Step 3 — Create release branch (UAT environment)
+git checkout -b release/v1.0
+git push origin release/v1.0
+
+This branch deploys to UAT.
+
+Step 4 — main branch already exists (PROD)
+git checkout main
+git push origin main
+
+This branch deploys to PROD.
+
+Step 5 — Create feature branch (DEV environment)
+
+Example:
+
+git checkout develop
+git checkout -b feature/course-module
+git push origin feature/course-module
+
+This branch deploys to DEV.
+
+Complete Branch Structure
+main
+develop
+release/v1.0
+feature/course-module
+feature/enquiry-form
+feature/jwt-security
+Deployment Flow
+Developer creates feature branch
+    ↓
+feature/* deployed to DEV
+    ↓
+Merge feature → develop
+    ↓
+develop deployed to QA
+    ↓
+Create release branch
+    ↓
+release/* deployed to UAT
+    ↓
+Merge release → main
+    ↓
+main deployed to PROD
+GitHub Commands for Promotion
+DEV → QA
+git checkout develop
+git merge feature/course-module
+git push origin develop
+QA → UAT
+git checkout release/v1.0
+git merge develop
+git push origin release/v1.0
+UAT → PROD
+git checkout main
+git merge release/v1.0
+git push origin main
+GitHub Protected Branch Settings (Enterprise)
+
+Go to:
+
+GitHub → Settings → Branches
+
+Protect:
+
+main
+release/*
+develop
+
+Enable:
+
+Require pull request
+
+Require approval
+
+Require status checks
+
+GitHub Actions Environment Mapping
+
+Example workflow condition:
+
+if: startsWith(github.ref, 'refs/heads/feature/')
+
+Deploy to DEV
+
+if: github.ref == 'refs/heads/develop'
+
+Deploy to QA
+
+if: startsWith(github.ref, 'refs/heads/release/')
+
+Deploy to UAT
+
+if: github.ref == 'refs/heads/main'
+
+Deploy to PROD
+
+Example Enterprise Workflow
+feature/enquiry-form  → DEV
+develop               → QA
+release/v1.0         → UAT
+main                  → PROD
+Best Practice Naming Convention
+feature/enquiry-form
+feature/jwt-auth
+release/v1.0
+release/v1.1
+hotfix/security-fix
+Enterprise Recommended Model (GitFlow)
+main
+develop
+feature/*
+release/*
+hotfix/*
+Optional: Add hotfix branch
+
+For emergency PROD fixes:
+
+git checkout main
+git checkout -b hotfix/security-fix
+git push origin hotfix/security-fix
+
+Then merge into:
+
+main
+develop
+Final Enterprise Branch Flow Summary
+feature/* → develop → release/* → main
+ DEV         QA         UAT       PROD

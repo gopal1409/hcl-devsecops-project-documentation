@@ -1,0 +1,110 @@
+86 git checkout -b develop
+  87 git add .
+  88 git commit -m "added ci job"
+  89 git push origin develop
+  90 git checkout -b codesweep
+  91 git branch
+  ###To scan code changes when a pull request is opened, add the following file to your repository under .github/workflows/codesweep.yml or update an existing workflow file:
+name: "HCL AppScan CodeSweep"
+on:
+  pull_request:
+    types: [opened,synchronize]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run AppScan CodeSweep
+        uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+    env: 
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+##Add the following file to your repository under .github/workflows/codesweep_publish.yml or update an existing workflow file:
+name: "HCL AppScan CodeSweep"
+on:
+  pull_request:
+    types: [closed]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish issues to ASoC
+        uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+        with:
+          asoc_key: ${{secrets.ASOC_KEY}}
+          asoc_secret: ${{secrets.ASOC_SECRET}}
+          publish_on_merge: true
+          application_id: 1b01198e-fa0a-4980-929b-49c00fa58f6e
+    env: 
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  92 git add .
+  93 git commit -m "added codesweep"
+    #finally push the code to github repo
+    ###git push origin codesweep
+    #you will see the scan there is no bugs in it lets create an sql injection 
+    git pull origin codesweep
+    ##############################
+    backend/src/main/java/com/lnd/controller/UserController.java
+    ####inside this put this code 
+package com.lnd.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/search")
+    public String searchUser(@RequestParam String username) {
+
+        String query = "SELECT * FROM users WHERE username = '" + username + "'";
+
+        return jdbcTemplate.queryForObject(query, String.class);
+    }
+}
+#there are two bugs inside it 
+  sql injection using untrust input concatination
+  ###then do
+  git pull origin codesweep
+  git init 
+  git add .
+  git commit -m "sql injection started"
+  ###then finally do pull request and compare develop branch with codesweep
+  ##lets resolve the sql injection
+   git pull origin codesweep
+  #modify the injection 
+  backend/src/main/java/com/lnd/controller/UserController.java
+  ##3inside this file add the below mentioned code 
+  package com.lnd.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/search")
+    public List<Map<String, Object>> searchUser(@RequestParam String username) {
+
+        String query = "SELECT * FROM users WHERE username = ?";
+
+        return jdbcTemplate.queryForList(query, username);
+    }
+}
+####once added 
+  git add .
+  git commit -m "remove sql injection"
+  git push origin codesweep

@@ -1,0 +1,344 @@
+ 2 git branch
+   3 git checkout main
+   4 git checkout -b security-codesweep
+   5 git branch
+  ##create a new folder called as .github/workspaces inside the folder lets create code-sweep.yml and add this code 
+   name: Full Stack CI
+
+on:
+  push:
+    branches: [main, develop, test, security-codesweep]
+  pull_request:
+    branches: [main, develop, test, security-codesweep]
+    types: [opened, synchronize, closed]
+
+jobs:
+  # =============================
+  # FRONTEND JOB
+  # =============================
+  frontend:
+    name: React Frontend CI
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Install Test Framework (CI only)
+        run: npm install --no-save vitest jsdom @testing-library/react
+
+      - name: Run Unit Tests
+        run: |
+          if ls src/**/*.{test,spec}.{js,jsx,ts,tsx} 1> /dev/null 2>&1; then
+            npx vitest run --coverage
+          else
+            echo "No test files found. Skipping frontend tests."
+          fi
+
+      - name: Build Frontend
+        run: npm run build
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+
+  # =============================
+  # BACKEND JOB (SPRING BOOT)
+  # =============================
+  backend:
+    name: Spring Boot Backend CI
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Run Unit Tests
+        run: mvn test
+
+      - name: Build Backend
+        run: mvn clean package -DskipTests
+
+      - name: Upload Backend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+
+  # =============================
+  # CODE SWEEP SCAN
+  # =============================
+  scan:
+    name: HCL AppScan CodeSweep Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run AppScan CodeSweep
+        uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================
+  # CODE SWEEP PUBLISH
+  # =============================
+  publish:
+    name: HCL AppScan CodeSweep Publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+
+    steps:
+      - name: Publish issues to ASoC
+        uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+        with:
+          asoc_key: ${{ secrets.ASOC_KEY }}
+          asoc_secret: ${{ secrets.ASOC_SECRET }}
+          publish_on_merge: true
+          application_id: <your ASoC application ID>
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+   9 git commit -m "security code sweep added"
+  10 git branch
+  11 git push origin security-codesweep
+  #once you push it it will not show the codesweep and publish working as we need to add an valnurability 
+  1️⃣ SQL Injection Vulnerability
+📁 File Path
+backend/src/main/java/com/lnd/controller/UserController.java
+❌ Vulnerable Code
+package com.lnd.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/search")
+    public String searchUser(@RequestParam String username) {
+
+        String query = "SELECT * FROM users WHERE username = '" + username + "'";
+
+        return jdbcTemplate.queryForObject(query, String.class);
+    }
+}
+🔎 CodeSweep Detection
+
+SQL Injection
+
+Untrusted input concatenation
+
+✅ Secure Fix
+@GetMapping("/search")
+public String searchUser(@RequestParam String username) {
+
+    String query = "SELECT * FROM users WHERE username = ?";
+
+    return jdbcTemplate.queryForObject(query, new Object[]{username}, String.class);
+}
+
+Uses parameterized queries.
+
+2️⃣ Hardcoded Secret
+📁 File Path
+backend/src/main/java/com/lnd/config/DatabaseConfig.java
+❌ Vulnerable Code
+package com.lnd.config;
+
+public class DatabaseConfig {
+
+    private static final String DB_PASSWORD = "SuperSecret123";
+
+    public String getPassword() {
+        return DB_PASSWORD;
+    }
+}
+🔎 CodeSweep Detection
+
+Hardcoded credentials
+
+Secret exposure
+
+✅ Secure Fix
+package com.lnd.config;
+
+public class DatabaseConfig {
+
+    private String dbPassword = System.getenv("DB_PASSWORD");
+
+    public String getPassword() {
+        return dbPassword;
+    }
+}
+
+Or use:
+
+application.properties
+spring.datasource.password=${DB_PASSWORD}
+3️⃣ Logging Sensitive Data
+📁 File Path
+backend/src/main/java/com/lnd/controller/AuthController.java
+❌ Vulnerable Code
+@PostMapping("/login")
+public ResponseEntity<String> login(@RequestBody LoginRequest request) {
+
+    log.info("Login attempt password: {}", request.getPassword());
+
+    return ResponseEntity.ok("Login successful");
+}
+🔎 CodeSweep Detection
+
+Sensitive data in logs
+
+✅ Secure Fix
+@PostMapping("/login")
+public ResponseEntity<String> login(@RequestBody LoginRequest request) {
+
+    log.info("Login attempt for user: {}", request.getUsername());
+
+    return ResponseEntity.ok("Login successful");
+}
+
+Never log passwords.
+
+4️⃣ Path Traversal Vulnerability
+📁 File Path
+backend/src/main/java/com/lnd/controller/FileController.java
+❌ Vulnerable Code
+@GetMapping("/download")
+public ResponseEntity<Resource> downloadFile(@RequestParam String filename) throws Exception {
+
+    Path path = Paths.get("uploads/" + filename);
+
+    Resource resource = new UrlResource(path.toUri());
+
+    return ResponseEntity.ok(resource);
+}
+🔎 CodeSweep Detection
+
+Path traversal
+
+Unsafe file access
+
+✅ Secure Fix
+@GetMapping("/download")
+public ResponseEntity<Resource> downloadFile(@RequestParam String filename) throws Exception {
+
+    Path basePath = Paths.get("uploads").toAbsolutePath().normalize();
+    Path resolvedPath = basePath.resolve(filename).normalize();
+
+    if (!resolvedPath.startsWith(basePath)) {
+        throw new SecurityException("Invalid file path");
+    }
+
+    Resource resource = new UrlResource(resolvedPath.toUri());
+
+    return ResponseEntity.ok(resource);
+}
+5️⃣ Weak Random Number Generation
+📁 File Path
+backend/src/main/java/com/lnd/service/OtpService.java
+❌ Vulnerable Code
+import java.util.Random;
+
+public class OtpService {
+
+    public int generateOtp() {
+
+        Random random = new Random();
+
+        return random.nextInt(999999);
+    }
+}
+🔎 CodeSweep Detection
+
+Weak cryptography
+
+✅ Secure Fix
+import java.security.SecureRandom;
+
+public class OtpService {
+
+    private SecureRandom secureRandom = new SecureRandom();
+
+    public int generateOtp() {
+
+        return secureRandom.nextInt(999999);
+    }
+}
+🧪 DevSecOps Demo Workflow
+Add vulnerable code
+        ↓
+Push branch
+        ↓
+Open Pull Request
+        ↓
+CodeSweep scan runs
+        ↓
+Vulnerability detected
+        ↓
+Fix code
+        ↓
+Scan passes
+🛡 Recommended Demo Branch
+
+Create separate branch:
+
+git checkout -b security-demo
+
+Never merge vulnerable code into:
+
+main
+develop
+release/*
+📊 Expected CodeSweep Findings
+Vulnerability	Severity
+SQL Injection	High
+Path Traversal	High
+Hardcoded Secret	Medium
+Sensitive Logging	Medium
+Weak Crypto	Medium
+🎯 Best Vulnerability for CodeSweep Demo
+
+Use SQL Injection because it is:
+
+✔ Easy to detect
+✔ High severity
+✔ Easy to fix
+✔ Good for DevSecOps pipeline demo

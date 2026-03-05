@@ -1,0 +1,174 @@
+To ensure that code from the develop branch cannot be merged into main if the DevSecOps pipeline fails, you must configure Branch Protection Rules in GitHub. This works together with your CI pipeline in GitHub Actions.
+
+Below is the standard enterprise approach.
+
+  1. Concept
+
+When a developer creates a Pull Request:
+
+develop  →  main
+
+GitHub will:
+
+Run the GitHub Actions pipeline
+
+Check the job results
+
+Block the merge if any job fails
+
+Example pipeline stages:
+
+Secret Scan
+SAST Scan
+Dependency Scan
+Policy Check
+Frontend Build
+Backend Build
+
+If any stage fails → Merge button is disabled.
+
+2. Enable Branch Protection for main
+
+Go to your repository.
+
+Repository → Settings → Branches
+
+Click:
+
+Add Branch Protection Rule
+
+Branch name pattern:
+
+main
+3. Enable Required Status Checks
+
+Enable:
+
+Require status checks to pass before merging
+
+Then select the pipeline jobs.
+
+Example:
+
+secret-scan
+sast-scan
+dependency-scan
+policy-check
+frontend-build
+backend-build
+
+Now GitHub requires all checks to pass.
+
+4. Require Pull Request
+
+Enable:
+
+Require a pull request before merging
+
+This prevents direct pushes to main.
+
+Workflow becomes:
+
+Developer → develop branch
+        │
+        ▼
+Create Pull Request
+        │
+        ▼
+GitHub Actions Pipeline
+        │
+        ▼
+Checks Pass → Merge Allowed
+Checks Fail → Merge Blocked
+5. Require Review (Recommended)
+
+Enable:
+
+Require approvals
+
+Example:
+
+1 approval required
+
+This creates a governance gate.
+
+6. Prevent Bypass
+
+Enable:
+
+Do not allow bypassing the above settings
+
+Even admins cannot merge failing builds.
+
+7. Example Real DevSecOps Flow
+Developer commits code
+        │
+        ▼
+Push to develop branch
+        │
+        ▼
+Pull Request: develop → main
+        │
+        ▼
+GitHub Actions Pipeline
+        │
+        ├─ Secret Scan
+        ├─ SAST Scan
+        ├─ Dependency Scan
+        ├─ Policy Check
+        ├─ Build
+        │
+        ▼
+If any job fails ❌
+        │
+        ▼
+Merge blocked
+8. Example Failed PR
+
+GitHub shows:
+
+❌ dependency-scan failed
+❌ policy-check failed
+
+Merge button becomes:
+
+Merge blocked: checks failed
+9. Optional Enterprise Rule
+
+You can also require:
+
+Require branches to be up to date before merging
+
+This ensures:
+
+develop branch
+must be rebased with main
+before merge
+10. Git Workflow Example
+
+Developer workflow:
+
+Create feature branch
+
+git checkout -b feature-login
+
+Push code
+
+git push origin feature-login
+
+Create PR
+
+feature-login → develop
+
+After testing:
+
+develop → main
+
+Pipeline runs again.
+
+✅ Recommended Enterprise Branch Strategy
+
+main       → production
+develop    → integration
+feature/*  → new features
+hotfix/*   → urgent fixes

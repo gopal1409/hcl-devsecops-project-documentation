@@ -1,0 +1,105 @@
+Secure GitHub Action (Backend – Spring Boot)
+
+Artifact is created only if CodeSweep passes
+
+name: Backend DevSecOps Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+
+  backend-scan-build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # Setup Java
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    # Run CodeSweep Security Scan
+    - name: Run HCL AppScan CodeSweep
+      id: codesweep
+      uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+      env:
+        APPSCAN_KEY: ${{ secrets.APPSCAN_KEY }}
+        APPSCAN_SECRET: ${{ secrets.APPSCAN_SECRET }}
+
+    # Build Spring Boot Application
+    - name: Build Backend
+      if: success()     # Will only run if CodeSweep succeeds
+      run: mvn clean package -DskipTests
+
+    # Upload Artifact
+    - name: Upload Backend Artifact
+      if: success()     # Artifact only created if scan + build pass
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-jar
+        path: backend/target/*.jar
+Pipeline Flow
+Checkout
+   ↓
+CodeSweep Security Scan
+   ↓
+IF scan passes
+   ↓
+Spring Boot Build
+   ↓
+Artifact Upload
+
+If CodeSweep finds policy violations and fails, the pipeline stops and artifact is NOT created.
+
+Even Better (Enterprise DevSecOps Pattern)
+
+Separate Security Gate Job
+
+jobs:
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CodeSweep
+        uses: HCL-TECH-SOFTWARE/appscan-codesweep-action@v2.1
+
+  build-backend:
+    needs: security-scan
+    runs-on: ubuntu-latest
+    if: needs.security-scan.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: mvn clean package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+
+This creates a true DevSecOps security gate.
+
+Security Scan (CodeSweep)
+        ↓
+      PASS
+        ↓
+       Build
+        ↓
+     Artifact
+
+If scan fails → pipeline stops before build.
+
+✅ This is the recommended enterprise DevSecOps gating approach.

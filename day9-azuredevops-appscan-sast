@@ -1,0 +1,8 @@
+##we will build our azure devops pipeline and run an sast scan using appscan 
+  #integrate hcl app scan with sast inside a azure devops pipeline
+  ###login into your remote desktop
+  ##open portal.azure.com
+  #############
+  azuredevops
+  ######
+  

@@ -12,4 +12,15 @@
 ###go to market place
 ##hclappscan
 ##once you got the extension login to app scan
+#on your extreme left side you will get an home button below that you will get 
+#3below that application create an application
+##give a name and medium
+###you need to go to the tools api-generate a key id and key secret store the same in a notepad
+#############need to make a connection to azure devops to hcl app scan 
+##go to project setting pipeline you will get service connection
+#you will find hcl appscan on cloud
+##server url 
+https://cloud.appscan.com
+##put the secret key id and secret
+
   

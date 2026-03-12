@@ -93,3 +93,7 @@ stages:
         mavenAuthenticateFeed: false
         effectivePomSkip: false
         sonarQubeRunAnalysis: false
+#3if you are geetign java error in your pipeline
+sudo apt install default-jdk
+sudo apt install maven
+sudo apt install docker

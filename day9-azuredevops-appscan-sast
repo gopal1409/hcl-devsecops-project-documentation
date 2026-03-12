@@ -97,3 +97,4 @@ stages:
 sudo apt install default-jdk
 sudo apt install maven
 sudo apt install docker
+sudo usermod -aG docker

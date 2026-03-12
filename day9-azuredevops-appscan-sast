@@ -23,4 +23,73 @@
 https://cloud.appscan.com
 ##put the secret key id and secret
 
-  
+#3before you add login to your agent machine using power
+ssh hcladmin@12.12.12.12
+#########################
+ls
+###
+cd myagent
+./run.sh
+##this will start the agent 
+##then go back your your pipeline and edit it save it then see the pipeline is running
+trigger:
+- master
+
+pool: default
+
+stages:
+
+#################################
+# BUILD STAGE
+#################################
+
+- stage: Build
+  displayName: Secure Build Stage
+
+  jobs:
+
+  - job: MavenBuild
+    displayName: Secure Maven Build
+
+    steps:
+
+#################################
+# SOURCE CONTROL CHECK
+#################################
+
+    - checkout: self
+      persistCredentials: true
+
+#################################
+# SECRET SCANNING (GITLEAKS)
+#################################
+
+    - script: |
+        docker run --rm \
+        -v $(System.DefaultWorkingDirectory):/path \
+        zricethezav/gitleaks:latest detect \
+        --source="/path" \
+        --report-format=json \
+        --report-path=/path/gitleaks-report.json
+      displayName: Secret Scan (Gitleaks)
+
+
+
+#################################
+# MAVEN BUILD + UNIT TEST
+#################################
+
+    - task: Maven@4
+      displayName: Maven Build & Unit Test
+
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean install'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+        javaHomeOption: 'JDKVersion'
+        mavenVersionOption: 'Default'
+        mavenAuthenticateFeed: false
+        effectivePomSkip: false
+        sonarQubeRunAnalysis: false
